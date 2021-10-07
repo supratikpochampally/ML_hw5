@@ -1,0 +1,177 @@
+---
+title: 'Homework 5: kNN'
+author: "Supratik Pochampally"
+output:
+  html_document:
+    df_print: paged
+---
+
+## Problem 1: Comparing Linear Regression and kNN Regression
+
+### 1.
+
+```{r}
+# Import the ISLR package
+library(ISLR)
+# Set seed to 1234
+set.seed(1234)
+auto_df <- Auto
+# Divide into 75% train and 25% test 
+df1 <- sample(1:nrow(auto_df), round(nrow(auto_df)*0.75), replace=FALSE)
+train1 <- auto_df[df1, ]
+test1 <- auto_df[-df1, ]
+```
+
+### 2.
+
+```{r}
+# Build linear regression model to model mpg with the cylinders, displacement, and horsepower predictors
+lm1 <- lm(mpg ~ cylinders + displacement + horsepower, data = train1)
+# Print summary of linear regression model
+summary(lm1)
+# Print residual plots
+par(mfrow = c(2, 2))
+plot(lm1)
+```
+
+### 3.
+
+```{r}
+# Evaluate the model on the test data
+pred1 <- predict(lm1, newdata = test1)
+# Calculate correlation and MSE 
+cor_lm <- cor(pred1, test1$mpg)
+mse_lm <- mean((pred1 - test1$mpg)^2)
+# Print correlation and MSE
+print(paste("cor =", cor_lm))
+print(paste("mse =", mse_lm))
+```
+
+### 4.
+
+```{r}
+# Import caret library
+library(caret)
+# Build kNN model for the same target variable and predictors
+fit <- knnreg(train1[, 2:4], train1[, 1], k = 1)
+# Evaluate model on the test data
+pred2 <- predict(fit, test1[, 2:4])
+# Calculate the correlation and MSE of the model
+cor_knn <- cor(pred2, test1$mpg)
+mse_knn <- mean((pred2 - test1$mpg)^2)
+# Output correlation and MSE
+print(paste("cor =", cor_knn))
+print(paste("mse =", mse_knn))
+```
+
+### 5.
+
+(a) The correlation for linear regression is 0.806 and the correlation for kNN is 0.844. kNN has a higher correlation.  
+(b) The MSE for linear regression is 21.758 and the MSE for kNN is 18.961. kNN has a lower MSE. 
+(c) Although there is an evident relationship of a higher MSE for a lower correlation, MSE has a more significant difference between the two regressions because the MSE is a square unit of difference. We square this value to ensure that whether we have a positive or negative error, we compute the average as the same magnitude of error. 
+(d) The kNN algorithm works particularly well when we have a small number of predictors such as the three predictors we use for this example. This is because it is much easier to find neighbors in the 3-dimensional space of the problem, which would result in a fairly solid performance over linear regression. Furthermore, the kNN regression had a very small k value, which would make the algorithm lean towards a lower bias and higher variance. 
+
+## Problem 2: Comparing Logistic Regression and kNN Classification
+
+### 1. 
+
+```{r}
+# Import mlbench library
+library(mlbench)
+# Import BreastCancer dataset
+data(BreastCancer)
+# Set seed to 1234
+set.seed(1234)
+# Create two new columns of binary factors of Cell.size and Cell.shape.
+BreastCancer$Cell.small <- factor(ifelse(BreastCancer$Cell.size == 1, 1, 0))
+BreastCancer$Cell.regular <- factor(ifelse(BreastCancer$Cell.shape == 1, 1, 0))
+breastCancer_df <- BreastCancer
+# Split data into 75% train and 25% test sets
+df2 <- sample(1:nrow(breastCancer_df), round(nrow(breastCancer_df)*0.75), replace=FALSE)
+train2 <- breastCancer_df[df2, ]
+test2 <- breastCancer_df[-df2, ]
+```
+
+### 2.
+```{r}
+# Build logistic regressions model for Class based on the Cell.small and Cell.regular predictors
+glm1 <- glm(Class ~ Cell.small + Cell.regular, data = train2, family = binomial)
+# Print summary of the logistic regression model
+summary(glm1)
+```
+
+### 3.
+```{r}
+# Evaluate the model on the test data
+probs1 <- predict(glm1, newdata=test2, type="response")
+# Calculate the probabilities
+pred3 <- ifelse(probs1>0.5, 2, 1)
+# Print the table
+print(table(pred3, test2$Class))
+# Calculate and print the accuracy of the model
+acc1 <- mean(pred3==as.integer(test2$Class), na.rm=TRUE)
+print(paste("acc =", acc1))
+```
+
+### 4.
+
+```{r}
+# Import the class library
+library(class)
+# Build kNN model for Class based on Cell.small and Cell.regular predictors
+fit2 <- knn(train = train2[, 12:13], test = test2[, 12:13], cl = train2[, 11], k = 1)
+# Evaluate the model on the test data
+pred4 <- fit2 == test2[, 11]
+# Calculate the accuracy
+acc2 <- length(which(pred4 == TRUE)) / length(pred4) 
+# Print the confusion matrix
+table(pred4, fit2)
+# Print the accuracy
+print(paste("acc =", acc2))
+```
+
+### 5. 
+
+```{r}
+# Build a vector of predictor columns
+pred_cols <- c(2, 3, 4, 5, 6, 8, 9, 10)
+# Build kNN model for Class based on the predictors
+fit3 <- knn(train = train2[, pred_cols], test = test2[, pred_cols], cl = train2[, 11], k = 1)
+# Evaluate the model on the test data
+pred5 <- fit3 == test2[, 11]
+# Calculate the accuracy
+acc3 <- length(which(pred5 == TRUE)) / length(pred5) 
+# Print the confusion matrix
+table(pred5, fit3)
+# Print the accuracy 
+print(paste("acc =", acc3))
+```
+
+### 6.
+
+(a) The logistic regression and kNN algorithm resulted in the same confusion matrix and accuracy. One reason we might have gotten the same metrics for both models is because we are only using two predictors. The following conditional density plots for Cell.small and Cell.regular with Class show that there is a very clear distinction of what size and shape of tumor classify as benign or malignant. This shows that it was likely very easy for both the logistic regression and kNN algorithm to predict what class a tumor was in based on these predictors, since the data is clearly very simple, which is why we got the same set of predictions and accuracy for both models. 
+
+```{r}
+par(mfrow = c(1, 2))
+cdplot(BreastCancer$Cell.small, BreastCancer$Class)
+cdplot(BreastCancer$Cell.regular, BreastCancer$Class)
+```
+
+
+(b) When using a large number of predictors, such as all the predictors in the BreastCancer dataframe, we need to take note of the Curse of Dimensionality, which states that the more predictors we have, the hardesr it would be to find neighbors since there are so many dimensions. Although Naive Bayes algorithm does not struggle with this, kNN algorithm does, which is why we used a limited number of predictors for our kNN classification algorithm. Because of this, we maintain fairly solid metrics such as an accuracy of 0.92, showing that our kNN algorithm is performing well. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
